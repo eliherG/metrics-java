@@ -1,0 +1,268 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Dashboard de Métricas</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+      margin: 0;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    h1 {
+      font-size: 30px;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      align-items: start;
+    }
+
+    .card {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      min-height: 110px;
+      min-width: 0;
+      border: 1px solid #e5e7eb;
+    }
+
+    .card h3 {
+      margin: 0 0 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #6b7280;
+    }
+
+    .card p {
+      margin: 0;
+      font-size: 25px;
+      font-weight: 700;
+      color: #111827;
+      overflow-wrap: anywhere;
+    }
+
+    /* Tarjetas que contienen listas */
+    .card.lista {
+      grid-column: span 2;
+      min-height: 150px;
+    }
+
+    .card.lista p {
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1.8;
+      color: #374151;
+      max-height: 140px;
+      overflow-y: auto;
+      overflow-wrap: anywhere;
+    }
+
+    /* Estados */
+    #estado {
+      text-align: center;
+      color: #6b7280;
+      margin-bottom: 20px;
+    }
+
+    #estado.error {
+      color: #dc2626;
+      font-weight: 600;
+    }
+
+    .footer {
+      margin-top: 32px;
+      text-align: center;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    /* Tablets */
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    /* Móviles */
+    @media (max-width: 600px) {
+      body {
+        padding: 20px 12px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .card.lista {
+        grid-column: span 1;
+      }
+
+      .card p {
+        font-size: 22px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <main class="container">
+
+    <header>
+      <h1>Dashboard de Métricas</h1>
+      <p class="subtitle">
+        Análisis de datos con Java 17 y Spring Boot
+      </p>
+    </header>
+
+    <p id="estado">Cargando métricas...</p>
+
+    <section id="resultados" class="grid"></section>
+
+    <footer class="footer">
+      <p>API REST · Spring Boot · Java 17</p>
+    </footer>
+
+  </main>
+
+  <script>
+
+    const etiquetas = {
+      totalElementos: "Total de elementos",
+      sumaTotal: "Suma total",
+      media: "Media",
+      sumaPares: "Suma de pares",
+      sumaImpares: "Suma de impares",
+      ordenAscendente: "Orden ascendente",
+      ordenDescendente: "Orden descendente",
+      mediana: "Mediana",
+      sinDuplicados: "Sin duplicados",
+      top5Mayores: "Top 5 mayores"
+    };
+
+    function formatearValor(clave, valor) {
+
+      if (Array.isArray(valor)) {
+        return valor.join(", ");
+      }
+
+      if (clave === "media" || clave === "mediana") {
+        return Number(valor).toLocaleString("es-MX", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+      }
+
+      if (typeof valor === "number") {
+        return valor.toLocaleString("es-MX");
+      }
+
+      return String(valor);
+    }
+
+    function crearTarjeta(clave, valor) {
+
+      const tarjeta = document.createElement("article");
+
+      tarjeta.className = Array.isArray(valor)
+        ? "card lista"
+        : "card";
+
+      const titulo = document.createElement("h3");
+      titulo.textContent = etiquetas[clave] || clave;
+
+      const contenido = document.createElement("p");
+      contenido.textContent = formatearValor(clave, valor);
+
+      tarjeta.appendChild(titulo);
+      tarjeta.appendChild(contenido);
+
+      return tarjeta;
+    }
+
+    async function cargarMetricas() {
+
+      const estado = document.getElementById("estado");
+      const contenedor = document.getElementById("resultados");
+
+      try {
+
+        estado.textContent = "Cargando métricas...";
+        estado.className = "";
+
+        const respuesta = await fetch("/api/metrics");
+
+        if (!respuesta.ok) {
+          throw new Error(
+            `Error HTTP: ${respuesta.status}`
+          );
+        }
+
+        const datos = await respuesta.json();
+
+        contenedor.replaceChildren();
+
+        Object.entries(datos).forEach(([clave, valor]) => {
+          const tarjeta = crearTarjeta(clave, valor);
+          contenedor.appendChild(tarjeta);
+        });
+
+        estado.textContent = "";
+
+      } catch (error) {
+
+        contenedor.replaceChildren();
+
+        estado.textContent =
+          "No se pudieron cargar las métricas. Verifica que la API esté disponible.";
+
+        estado.className = "error";
+
+        console.error("Error al consultar API:", error);
+      }
+    }
+
+    document.addEventListener(
+      "DOMContentLoaded",
+      cargarMetricas
+    );
+
+  </script>
+
+</body>
+</html>
